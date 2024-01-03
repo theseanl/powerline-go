@@ -58,7 +58,7 @@ func addRepoStatsSymbol(nChanges int, symbol string, GitMode string) string {
 		if GitMode == "simple" {
 			return symbol
 		} else if GitMode == "compact" {
-			return fmt.Sprintf(" %d%s", nChanges, symbol )
+			return fmt.Sprintf(" %d%s", nChanges, symbol)
 		} else {
 			return symbol
 		}
@@ -109,7 +109,19 @@ var gitProcessEnv = func() []string {
 	return result
 }()
 
-func runGitCommand(cmd string, args ...string) (string, error) {
+func runGitCommand(args ...string) (string, error) {
+	// <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< CUSTOM MODIFICATION
+	cmd := "git"
+	path, err := os.Getwd()
+	if err == nil {
+		if strings.HasPrefix(path, "/mnt/") {
+			// Call git from Windows if we are inside a WSL2 instance accessing
+			// Windows filesystem. Due to WSL2 issue, file system performance is
+			// much slower in /mnt/. See https://github.com/microsoft/WSL/issues/4197
+			cmd = "git.exe"
+		}
+	}
+	// CUSTOM MODIFICATION END >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 	command := exec.Command(cmd, args...)
 	command.Env = gitProcessEnv
 	out, err := command.Output()
@@ -121,9 +133,9 @@ func parseGitBranchInfo(status []string) map[string]string {
 }
 
 func getGitDetachedBranch(p *powerline) string {
-	out, err := runGitCommand("git", "--no-optional-locks", "rev-parse", "--short", "HEAD")
+	out, err := runGitCommand("--no-optional-locks", "rev-parse", "--short", "HEAD")
 	if err != nil {
-		out, err := runGitCommand("git", "--no-optional-locks", "symbolic-ref", "--short", "HEAD")
+		out, err := runGitCommand("--no-optional-locks", "symbolic-ref", "--short", "HEAD")
 		if err != nil {
 			return "Error"
 		}
@@ -160,7 +172,7 @@ func parseGitStats(status []string) repoStats {
 }
 
 func repoRoot(path string) (string, error) {
-	out, err := runGitCommand("git", "--no-optional-locks", "rev-parse", "--show-toplevel")
+	out, err := runGitCommand("--no-optional-locks", "rev-parse", "--show-toplevel")
 	if err != nil {
 		return "", err
 	}
@@ -197,7 +209,7 @@ func segmentGit(p *powerline) []pwl.Segment {
 		}
 	}
 
-	out, err := runGitCommand("git", args...)
+	out, err := runGitCommand(args...)
 	if err != nil {
 		return []pwl.Segment{}
 	}
@@ -262,7 +274,7 @@ func segmentGit(p *powerline) []pwl.Segment {
 	}
 
 	if stashEnabled {
-		out, err = runGitCommand("git", "--no-optional-locks", "rev-list", "-g", "refs/stash")
+		out, err = runGitCommand("--no-optional-locks", "rev-list", "-g", "refs/stash")
 		if err == nil {
 			stats.stashed = strings.Count(out, "\n")
 		}
